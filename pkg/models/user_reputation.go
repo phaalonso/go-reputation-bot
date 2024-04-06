@@ -8,7 +8,6 @@ import (
 var db *gorm.DB
 
 type UserReputation struct {
-	gorm.Model
 	ChatID     int64 `gorm:"primaryKey;autoIncrement:false"`
 	UserID     int64 `gorm:"primaryKey;autoIncrement:false"`
 	Reputation int32
@@ -16,14 +15,14 @@ type UserReputation struct {
 
 func init() {
 	config.Connect()
-	db = config.GetDB()
-	db.Debug().AutoMigrate(&UserReputation{})
+	db = config.GetDB().Debug()
+	db.AutoMigrate(&UserReputation{})
 }
 
 func UpdateOrCreateReputation(chatId int64, userId int64) *UserReputation {
-	rep := GetUserReputationInChat(chatId, userId)
+	rep, err := GetUserReputationInChat(chatId, userId)
 
-	if rep == nil {
+	if err != nil {
 		rep = &UserReputation{
 			ChatID:     chatId,
 			UserID:     userId,
@@ -46,22 +45,22 @@ func (u *UserReputation) CreateUserReputation() *UserReputation {
 	return u
 }
 
-func GetUserReputationInChat(chatId int64, userId int64) *UserReputation {
+func GetUserReputationInChat(chatId int64, userId int64) (*UserReputation, error) {
 	var ur UserReputation
 
-	db.Where("ChatID=? AND UserID=?", chatId, userId).First(&ur)
+	d := db.Where("chat_id=?", chatId).Where("user_id=?", userId).First(&ur)
 
-	return &ur
+	return &ur, d.Error
 }
 
 func GetTotalUserReputation(userId int64) int32 {
 	var reputation int32
 
-	db.Where("UserID=?", userId).Group("UserID").Select("sum(Reputation) as total").Scan(&reputation)
+	db.Where("user_id=?", userId).Group("user_id").Select("sum(reputation) as total").Scan(&reputation)
 
 	return reputation
 }
 
 func (u *UserReputation) UpdateUserReputation(reputation int32) {
-	db.Where("ChatID=? AND UserID=?", u.ChatID, u.UserID).Set("Reputation=?", reputation)
+	db.Where("chat_id=?", u.ChatID).Where("user_id=?", u.UserID).Set("reputation=?", reputation)
 }
