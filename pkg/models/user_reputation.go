@@ -2,22 +2,41 @@ package models
 
 import (
 	"github.com/jinzhu/gorm"
-	"go-reputation-bot/pkg/config"
+	"github.com/phaalonso/go-reputation-bot/pkg/config"
 )
 
 var db *gorm.DB
 
 type UserReputation struct {
 	gorm.Model
-	ChatId     int64 `gorm:"primaryKey;autoIncrement:false"`
-	UserId     int64 `gorm:"primaryKey;autoIncrement:false"`
+	ChatID     int64 `gorm:"primaryKey;autoIncrement:false"`
+	UserID     int64 `gorm:"primaryKey;autoIncrement:false"`
 	Reputation int32
 }
 
 func init() {
 	config.Connect()
 	db = config.GetDB()
-	db.AutoMigrate(&UserReputation{})
+	db.Debug().AutoMigrate(&UserReputation{})
+}
+
+func UpdateOrCreateReputation(chatId int64, userId int64) *UserReputation {
+	rep := GetUserReputationInChat(chatId, userId)
+
+	if rep == nil {
+		rep = &UserReputation{
+			ChatID:     chatId,
+			UserID:     userId,
+			Reputation: 1,
+		}
+
+		return rep.CreateUserReputation()
+	}
+
+	rep.Reputation += 1
+	rep.UpdateUserReputation(rep.Reputation)
+
+	return rep
 }
 
 func (u *UserReputation) CreateUserReputation() *UserReputation {
@@ -27,10 +46,10 @@ func (u *UserReputation) CreateUserReputation() *UserReputation {
 	return u
 }
 
-func GetUserReputationInChat(userId int64, chatId int64) *UserReputation {
+func GetUserReputationInChat(chatId int64, userId int64) *UserReputation {
 	var ur UserReputation
 
-	db.Where("ChatId = ? AND UserId = ?", chatId, userId).First(&ur)
+	db.Where("ChatID=? AND UserID=?", chatId, userId).First(&ur)
 
 	return &ur
 }
@@ -38,11 +57,11 @@ func GetUserReputationInChat(userId int64, chatId int64) *UserReputation {
 func GetTotalUserReputation(userId int64) int32 {
 	var reputation int32
 
-	db.Where("UserId=?", userId).Group("UserId").Select("sum(Reputation) as total").Scan(&reputation)
+	db.Where("UserID=?", userId).Group("UserID").Select("sum(Reputation) as total").Scan(&reputation)
 
 	return reputation
 }
 
-func (u *UserReputation) UpdateUserReputation(userId int64, chatId int64, reputation int32) {
-	db.Where("ChatId = ? AND UserId = ?", chatId, userId).Set("Reputation = ?", reputation)
+func (u *UserReputation) UpdateUserReputation(reputation int32) {
+	db.Where("ChatID=? AND UserID=?", u.ChatID, u.UserID).Set("Reputation=?", reputation)
 }

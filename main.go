@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	models "github.com/go-telegram/bot/models"
 	"github.com/joho/godotenv"
+	repository "github.com/phaalonso/go-reputation-bot/pkg/models"
 	"log"
 	"os"
 	"os/signal"
@@ -47,11 +48,19 @@ func startCommandHandler(ctx context.Context, b *bot.Bot, update *models.Update)
 }
 
 func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	fmt.Println(update)
-
-	if update.MessageReaction == nil || len(update.MessageReaction.NewReaction) == 0 {
+	if update.Message.ReplyToMessage == nil {
 		return
 	}
 
-	fmt.Println(update)
+	fmt.Println(update.Message.Text)
+
+	chatId := update.Message.Chat.ID
+	userId := update.Message.ReplyToMessage.From.ID
+
+	rep := repository.UpdateOrCreateReputation(chatId, userId)
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: chatId,
+		Text:   fmt.Sprintf("Esse usuário possui %d de reputação", rep.Reputation),
+	})
 }
