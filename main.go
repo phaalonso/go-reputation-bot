@@ -36,6 +36,14 @@ func main() {
 	}
 
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, startCommandHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/reputation", bot.MatchTypeExact, reputationHanler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/global_reputation", bot.MatchTypeExact, totalReputationHandler)
+
+	b.DeleteMyCommands(ctx, &bot.DeleteMyCommandsParams{})
+	//b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+	//	Scope:        nil,
+	//	LanguageCode: "",
+	//})
 
 	b.Start(ctx)
 }
@@ -62,5 +70,36 @@ func handler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: chatId,
 		Text:   fmt.Sprintf("Esse usuário possui %d de reputação", rep.Reputation),
+	})
+}
+
+func reputationHanler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId := update.Message.Chat.ID
+	userId := update.Message.From.ID
+
+	uReputation, err := repository.GetUserReputationInChat(chatId, userId)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   fmt.Sprintf("Your reputation in this chat is %d", uReputation.Reputation),
+	})
+}
+
+func totalReputationHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userId := update.Message.From.ID
+
+	reputation, err := repository.GetTotalUserReputation(userId)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   fmt.Sprintf("Your global reputation is %d", reputation),
 	})
 }

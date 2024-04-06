@@ -53,14 +53,20 @@ func GetUserReputationInChat(chatId int64, userId int64) (*UserReputation, error
 	return &ur, d.Error
 }
 
-func GetTotalUserReputation(userId int64) int32 {
+func GetTotalUserReputation(userId int64) (int32, error) {
 	var reputation int32
 
-	db.Where("user_id=?", userId).Group("user_id").Select("sum(reputation) as total").Scan(&reputation)
+	d := db.Model(&UserReputation{}).Where("user_id=?", userId).Select("sum(reputation) as total")
 
-	return reputation
+	if d.Error != nil {
+		return 0, d.Error
+	} else {
+		d.Row().Scan(&reputation)
+
+		return reputation, nil
+	}
 }
 
 func (u *UserReputation) UpdateUserReputation(reputation int32) {
-	db.Where("chat_id=?", u.ChatID).Where("user_id=?", u.UserID).Set("reputation=?", reputation)
+	db.Model(&u).Update("reputation", reputation)
 }
